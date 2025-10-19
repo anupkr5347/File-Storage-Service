@@ -3,6 +3,7 @@ package com.build.distributed.storage.controller;
 import com.build.distributed.storage.service.FileService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +36,7 @@ public class FileController {
     public ResponseEntity<InputStreamResource> downloadFile(@PathVariable String objectKey) throws Exception {
         InputStream fileStream = fileService.download(objectKey);
         return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + objectKey + "\"")
                 .body(new InputStreamResource(fileStream));
     }
