@@ -1,5 +1,5 @@
 package com.build.distributed.storage.dto;
 
 public enum Location {
-    GCP,MINIO
+    GCP,MINIO,S3
 }

@@ -3,6 +3,7 @@ package com.build.distributed.storage.controller;
 import com.build.distributed.storage.dto.Location;
 import com.build.distributed.storage.service.GCPFileService;
 import com.build.distributed.storage.service.MiniIoFileService;
+import com.build.distributed.storage.service.S3FileService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,25 +27,40 @@ public class FileController {
 
     private final MiniIoFileService miniIoFileService;
     private final GCPFileService gcpFileService;
+    private final S3FileService s3FileService;
 
-    public FileController(MiniIoFileService miniIoFileService, GCPFileService gcpFileService) {
+    public FileController(MiniIoFileService miniIoFileService, GCPFileService gcpFileService, S3FileService s3FileService) {
         this.miniIoFileService = miniIoFileService;
         this.gcpFileService = gcpFileService;
+        this.s3FileService = s3FileService;
     }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @RequestHeader Location location) throws Exception {
-        String objectKey = Location.MINIO.equals(location) ? miniIoFileService.uploadFile(file) :
-                gcpFileService.uploadFile(file);
+        String objectKey = null;
+        if (Location.MINIO.equals(location)) {
+            objectKey = miniIoFileService.uploadFile(file);
+        } else if (Location.GCP.equals(location)) {
+            objectKey = gcpFileService.uploadFile(file);
+        } else if (Location.S3.equals(location)) {
+            objectKey =  s3FileService.uploadFile(file);
+        }
+
         return ResponseEntity.ok(objectKey);
     }
 
     @GetMapping("/download/{objectKey}")
     public ResponseEntity<InputStreamResource> downloadFile(@PathVariable String objectKey, @RequestHeader Location location) throws Exception {
-        InputStream fileStream = Location.MINIO.equals(location) ? miniIoFileService.downloadFile(objectKey) :
-                gcpFileService.downloadFile(objectKey);
+        InputStream fileStream = null;
+        if (Location.MINIO.equals(location)) {
+            fileStream = miniIoFileService.downloadFile(objectKey);
+        } else if (Location.GCP.equals(location)) {
+            fileStream = gcpFileService.downloadFile(objectKey);
+        } else if (Location.S3.equals(location)) {
+            fileStream = s3FileService.downloadFile(objectKey);
+        }
+        assert fileStream != null;
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + objectKey + "\"")
                 .body(new InputStreamResource(fileStream));
     }
@@ -53,8 +69,10 @@ public class FileController {
     public ResponseEntity<Void> deleteFile(@PathVariable String objectKey, @RequestHeader Location location) throws Exception {
         if (Location.MINIO.equals(location)) {
             miniIoFileService.delete(objectKey);
-        } else {
+        } else if (Location.GCP.equals(location)) {
             gcpFileService.delete(objectKey);
+        } else if (Location.S3.equals(location)) {
+            s3FileService.delete(objectKey);
         }
 
         return ResponseEntity.ok().build();
